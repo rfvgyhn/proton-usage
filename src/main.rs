@@ -1,7 +1,7 @@
 use clap::Parser;
 use proton_usage::parse_steam_config;
 use std::path::PathBuf;
-use tokio;
+
 
 #[derive(Parser)]
 #[clap(version, about)]

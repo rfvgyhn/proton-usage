@@ -39,9 +39,9 @@ fn open_config<P>(path: P) -> Result<impl Iterator<Item=String>, Box<dyn std::er
 ///     ...
 ///     "[app_id]"
 ///     {
-///     "name"		"[tool_name]"
-///     "config"		"ignored"
-///     "Priority"	"ignored"
+///     "name"        "[tool_name]"
+///     "config"      "ignored"
+///     "Priority"    "ignored"
 ///     }
 ///     ...
 /// }
@@ -69,7 +69,7 @@ fn parse_compat_tool_mapping(config_lines: impl Iterator<Item=String>) -> BTreeM
             let version = line.split_whitespace()
                 .last()
                 .map_or("", |s| s.trim_matches('"'));
-            if version != "" {
+            if !version.is_empty() {
                 map.entry(version.to_string())
                     .or_insert_with(Vec::new)
                     .push(game_id.unwrap());
@@ -119,7 +119,7 @@ struct AppDetailsData {
 #[derive(Deserialize, Debug)]
 struct AppDetailsResponse(HashMap<u32, AppDetailsData>);
 
-async fn fetch_app_names(app_ids: &Vec<&u32>) -> Result<HashMap<u32, String>, Box<dyn std::error::Error>> {
+async fn fetch_app_names(app_ids: &[&u32]) -> Result<HashMap<u32, String>, Box<dyn std::error::Error>> {
     let urls = app_ids.iter()
         .map(|id| format!("https://store.steampowered.com/api/appdetails?filters=basic&appids={}", id))
         .collect::<Vec<String>>();
@@ -138,7 +138,7 @@ async fn fetch_app_names(app_ids: &Vec<&u32>) -> Result<HashMap<u32, String>, Bo
         .into_iter()
         .filter_map(Result::ok)
         .filter_map(|r| {
-            let id = r.0.keys().next().unwrap().clone();
+            let id = *r.0.keys().next().unwrap();
             let details = r.0.values().into_iter().next().unwrap();
             if details.success {
                 Some((id, details.data.name.clone()))
