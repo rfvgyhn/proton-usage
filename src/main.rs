@@ -12,6 +12,14 @@ use clap::{Parser};
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn std::error::Error>> {
     let opts: Opts = Opts::parse();
+    
+    stderrlog::new()
+        .module(module_path!())
+        .verbosity(opts.verbose + 1)
+        .timestamp(stderrlog::Timestamp::Millisecond)
+        .init()
+        .unwrap();
+    
     let config_path = opts.config_path
         .or_else(|| {
             dirs::home_dir()
@@ -23,14 +31,14 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 }
 
 async fn run(config_path: &PathBuf) -> Result<(), Box<dyn std::error::Error>> {
-    println!("Parsing {}", config_path.display());
+    log::debug!("Parsing {}", config_path.display());
     if let Ok(config) = parse_steam_config(&config_path) {
         let ids = config.values().cloned().flatten().collect::<Vec<_>>();
 
-        println!("Fetching app names");
+        log::info!("Fetching app names");
         let names = fetch_app_names(&ids).await?;
-
-        println!();
+        log::debug!("Found {} app names", names.len());
+        
         print_config(&config, &names);
         Ok(())
     } else {
@@ -168,4 +176,8 @@ struct Opts {
     /// Path to the config.vdf file
     #[clap(short, long)]
     config_path: Option<PathBuf>,
+
+    /// Output verbosity (-v, -vv, -vvv, etc)
+    #[clap(short, long, parse(from_occurrences))]
+    verbose: usize,
 }
