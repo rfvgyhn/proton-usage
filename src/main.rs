@@ -2,18 +2,27 @@ use std::collections::{BTreeMap, HashMap};
 use std::convert::TryFrom;
 use std::fs;
 use std::io::BufRead;
-use std::path::Path;
+use std::path::{Path, PathBuf};
 use futures::{stream, StreamExt};
 use reqwest::Client;
 use tokio;
 use serde::{Deserialize};
+use clap::{Parser};
 
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn std::error::Error>> {
-    let config_path = dirs::home_dir()
-        .map(|home| home.join(".steam/root/config/config.vdf"))
+    let opts: Opts = Opts::parse();
+    let config_path = opts.config_path
+        .or_else(|| {
+            dirs::home_dir()
+                .map(|home| home.join(".steam/root/config/config.vdf"))
+        })
         .ok_or("Couldn't find Steam root config")?;
 
+    run(&config_path).await
+}
+
+async fn run(config_path: &PathBuf) -> Result<(), Box<dyn std::error::Error>> {
     println!("Parsing {}", config_path.display());
     if let Ok(config) = parse_steam_config(&config_path) {
         let ids = config.values().cloned().flatten().collect::<Vec<_>>();
@@ -152,3 +161,11 @@ struct AppDetailsData {
 
 #[derive(Deserialize, Debug)]
 struct AppDetailsResponse(HashMap<u32, AppDetailsData>);
+
+#[derive(Parser)]
+#[clap(version, about)]
+struct Opts {    
+    /// Path to the config.vdf file
+    #[clap(short, long)]
+    config_path: Option<PathBuf>,
+}
