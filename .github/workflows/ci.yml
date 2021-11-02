@@ -100,7 +100,7 @@ jobs:
  
       - name: Package
         shell: bash
-        run: package.sh "v${{ env.$PU_VERSION }}"
+        run: package.sh "v${{ env.PU_VERSION }}"
       
       - name: Create Release Notes
         run: ci/latest-changes.sh > release-notes.txt
