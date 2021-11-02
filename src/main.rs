@@ -2,7 +2,6 @@ use clap::Parser;
 use proton_usage::parse_steam_config;
 use std::path::PathBuf;
 
-
 #[derive(Parser)]
 #[clap(version, about)]
 struct Opts {

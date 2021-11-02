@@ -1,12 +1,14 @@
+use futures::{stream, StreamExt};
+use reqwest::Client;
+use serde::Deserialize;
 use std::collections::{BTreeMap, HashMap};
 use std::fmt;
 use std::fmt::Display;
 use std::fs;
 use std::io::BufRead;
 use std::path::Path;
-use futures::{stream, StreamExt};
-use reqwest::Client;
-use serde::{Deserialize};
+
+type Result<T> = std::result::Result<T, Box<dyn std::error::Error>>;
 
 pub struct CompatToolConfig(BTreeMap<String, Vec<String>>);
 
@@ -18,21 +20,24 @@ impl Display for CompatToolConfig {
                 writeln!(f, "    {}", name)?;
             }
         }
-        
+
         Ok(())
     }
 }
 
-fn open_config<P>(path: P) -> Result<impl Iterator<Item=String>, Box<dyn std::error::Error>> where P: AsRef<Path> {
+fn open_config<P>(path: P) -> Result<impl Iterator<Item = String>>
+where
+    P: AsRef<Path>,
+{
     let file = fs::File::open(path)?;
     let lines = std::io::BufReader::new(file)
         .lines()
-        .filter_map(Result::ok);
+        .filter_map(std::result::Result::ok);
     Ok(lines)
 }
 
 /// Super fragile parsing. Expects a well formed config.vdf in the form of
-/// ```
+/// ```vdf
 /// ...
 /// "CompatToolMapping"
 /// {
@@ -47,8 +52,11 @@ fn open_config<P>(path: P) -> Result<impl Iterator<Item=String>, Box<dyn std::er
 /// }
 /// ...
 /// ```
-fn parse_compat_tool_mapping(config_lines: impl Iterator<Item=String>) -> BTreeMap<String, Vec<u32>> {
-    let mut lines = config_lines.skip_while(|l| l.trim() != "\"CompatToolMapping\"")
+fn parse_compat_tool_mapping(
+    config_lines: impl Iterator<Item = String>,
+) -> BTreeMap<String, Vec<u32>> {
+    let mut lines = config_lines
+        .skip_while(|l| l.trim() != "\"CompatToolMapping\"")
         .skip(2);
     let mut map = BTreeMap::new();
     let mut brace_count = 0;
@@ -58,15 +66,13 @@ fn parse_compat_tool_mapping(config_lines: impl Iterator<Item=String>) -> BTreeM
         let line = line.trim();
         if line == "{" {
             brace_count += 1;
-        }
-        else if line == "}" {
+        } else if line == "}" {
             brace_count -= 1;
-        }
-        else if let Ok(id) = line.trim_matches('"').parse() {
+        } else if let Ok(id) = line.trim_matches('"').parse() {
             game_id = Some(id);
-        }
-        else if line.starts_with("\"name") && game_id.is_some() {
-            let version = line.split_whitespace()
+        } else if line.starts_with("\"name") && game_id.is_some() {
+            let version = line
+                .split_whitespace()
                 .last()
                 .map_or("", |s| s.trim_matches('"'));
             if !version.is_empty() {
@@ -81,47 +87,60 @@ fn parse_compat_tool_mapping(config_lines: impl Iterator<Item=String>) -> BTreeM
     map
 }
 
-pub async fn parse_steam_config(path: &Path) -> Result<CompatToolConfig, Box<dyn std::error::Error>> {
+pub async fn parse_steam_config(path: &Path) -> Result<CompatToolConfig> {
     let lines = open_config(path)?;
 
     log::debug!("Parsing {}", path.display());
     let tool_mapping = parse_compat_tool_mapping(lines);
-    
+
     let ids = tool_mapping.values().flatten().collect::<Vec<_>>();
 
     log::info!("Fetching app names");
     let names = fetch_app_names(&ids).await?;
     log::debug!("Found {} app names", names.len());
-    
-    let config = tool_mapping.iter()
+
+    let config = tool_mapping
+        .iter()
         .map(|(tool, ids)| {
-            let names = ids.iter()
-                .map(|id| names.get(id).cloned().unwrap_or_else(|| format!("Unknown (Id: {})", id)))
+            let names = ids
+                .iter()
+                .map(|id| {
+                    names
+                        .get(id)
+                        .cloned()
+                        .unwrap_or_else(|| format!("Unknown (Id: {})", id))
+                })
                 .collect();
             (tool.clone(), names)
         })
         .collect();
-    
+
     Ok(CompatToolConfig(config))
 }
 
 #[derive(Deserialize, Debug)]
 struct AppDetails {
-    name: String
+    name: String,
 }
 
 #[derive(Deserialize, Debug)]
 struct AppDetailsData {
     data: AppDetails,
-    success: bool
+    success: bool,
 }
 
 #[derive(Deserialize, Debug)]
 struct AppDetailsResponse(HashMap<u32, AppDetailsData>);
 
-async fn fetch_app_names(app_ids: &[&u32]) -> Result<HashMap<u32, String>, Box<dyn std::error::Error>> {
-    let urls = app_ids.iter()
-        .map(|id| format!("https://store.steampowered.com/api/appdetails?filters=basic&appids={}", id))
+async fn fetch_app_names(app_ids: &[&u32]) -> Result<HashMap<u32, String>> {
+    let urls = app_ids
+        .iter()
+        .map(|id| {
+            format!(
+                "https://store.steampowered.com/api/appdetails?filters=basic&appids={}",
+                id
+            )
+        })
         .collect::<Vec<String>>();
     let client = Client::new();
 
@@ -129,14 +148,19 @@ async fn fetch_app_names(app_ids: &[&u32]) -> Result<HashMap<u32, String>, Box<d
         .map(|url| {
             let client = &client;
             async move {
-                client.get(url).send().await?.json::<AppDetailsResponse>().await
+                client
+                    .get(url)
+                    .send()
+                    .await?
+                    .json::<AppDetailsResponse>()
+                    .await
             }
         })
         .buffer_unordered(10)
         .collect::<Vec<_>>()
         .await
         .into_iter()
-        .filter_map(Result::ok)
+        .filter_map(std::result::Result::ok)
         .filter_map(|r| {
             let id = *r.0.keys().next().unwrap();
             let details = r.0.values().into_iter().next().unwrap();
