@@ -14,6 +14,11 @@ If you're an Arch Linux (or a derivative like Manjaro) user, then you can instal
 $ yay -S proton-usage
 ```
 
+You may also get the precompiled version from the [AUR][aur-bin]:
+```
+$ yay -S proton-usage-bin
+```
+
 ## Usage
 ```
 USAGE:
@@ -49,3 +54,4 @@ proton_experimental
 
 [releases]:https://github.com/rfvgyhn/proton-usage/releases
 [AUR]: https://aur.archlinux.org/packages/proton-usage/
+[aur-bin]: https://aur.archlinux.org/packages/proton-usage-bin/
