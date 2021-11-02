@@ -3,6 +3,17 @@ Lists Steam applications that have specified a Steam Play compatibility tool.
 Useful for when you want to remove/uninstall unused compatibility tools
 but aren't sure which ones are in use.
 
+## Installation
+
+### Manual
+Precompiled binaries are available from the GitHub [releases] archive.
+
+### Arch Linux
+If you're an Arch Linux (or a derivative like Manjaro) user, then you can install proton-usage from the [AUR]:
+```
+$ yay -S proton-usage
+```
+
 ## Usage
 ```
 USAGE:
@@ -35,3 +46,6 @@ proton_5
 proton_experimental
     Ragnarock
 ```
+
+[releases]:https://github.com/rfvgyhn/proton-usage/releases
+[AUR]: https://aur.archlinux.org/packages/proton-usage/
