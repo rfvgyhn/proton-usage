@@ -31,7 +31,6 @@ jobs:
         shell: bash
         run: |
           echo "PU_VERSION=${GITHUB_REF#refs/tags/v}" >> $GITHUB_ENV
-          echo "version is: ${{ env.PU_VERSION }}"
  
       - name: Package
         shell: bash
