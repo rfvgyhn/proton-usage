@@ -31,6 +31,19 @@ OPTIONS:
     -V, --version                      Print version information
 ```
 
+## Build
+1. [Install Rust]
+    
+    At least version 1.55. In general, proton-usage follows the latest _stable_ version of the compiler.
+2. Compile and run the binary:
+    ```
+    $ git clone https://github.com/rfvgyhn/proton-usage
+    $ cd proton-usage
+    $ cargo build --release
+    $ ./target/release/proton-usage --version
+    proton-usage 0.1.0
+    ```
+
 ## Preview
 ```
 user@arch:~$ proton-usage
@@ -55,3 +68,4 @@ proton_experimental
 [releases]:https://github.com/rfvgyhn/proton-usage/releases
 [AUR]: https://aur.archlinux.org/packages/proton-usage/
 [aur-bin]: https://aur.archlinux.org/packages/proton-usage-bin/
+[install rust]: https://www.rust-lang.org/tools/install
