@@ -2,7 +2,7 @@
 name = "proton-usage"
 authors = [ "rfvgyhn" ]
 version = "0.1.0"
-edition = "2018"
+edition = "2021"
 description = "Lists Steam applications that have specified a Steam Play compatibility tool"
 homepage = "https://github.com/rfvgyhn/proton-usage"
 repository = "https://github.com/rfvgyhn/proton-usage"
