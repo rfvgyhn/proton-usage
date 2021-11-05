@@ -1,9 +1,9 @@
-use super::AppId;
+use super::{parse_vdf_keys, AppId, KeyParser};
 use derive_more::{From, Into, IntoIterator};
 use std::collections::hash_map::{Entry, Values};
 use std::collections::HashMap;
 
-#[derive(IntoIterator, Into, From)]
+#[derive(IntoIterator, Into, From, Default)]
 pub struct CompatToolMapping(HashMap<String, Vec<AppId>>);
 impl CompatToolMapping {
     pub fn values(&self) -> Values<'_, String, Vec<AppId>> {
@@ -17,51 +17,20 @@ impl CompatToolMapping {
     }
 }
 
-/// Super fragile parsing. Expects a well formed config.vdf in the form of
-/// ```vdf
-/// ...
-/// "CompatToolMapping"
-/// {
-///     ...
-///     "[app_id]"
-///     {
-///     "name"        "[tool_name]"
-///     "config"      "ignored"
-///     "Priority"    "ignored"
-///     }
-///     ...
-/// }
-/// ...
-/// ```
-pub fn parse_compat_tool_mapping(config_lines: impl Iterator<Item = String>) -> CompatToolMapping {
-    let mut lines = config_lines
-        .skip_while(|l| l.trim() != "\"CompatToolMapping\"")
-        .skip(2);
-    let mut map = CompatToolMapping::new();
-    let mut depth = 0;
-    let mut app_id: Option<AppId> = None;
-
-    while let (Some(line), true) = (lines.next(), depth > -1) {
-        let line = line.trim();
-        if line == "{" {
-            depth += 1;
-        } else if line == "}" {
-            depth -= 1;
-        } else if let Ok(id) = line.trim_matches('"').parse() {
-            app_id = Some(id);
-        } else if line.starts_with("\"name") && app_id.is_some() {
-            let version = line
-                .split_whitespace()
-                .last()
-                .map_or("", |s| s.trim_matches('"'));
-            if !version.is_empty() {
-                map.entry(version.to_string())
-                    .or_insert_with(Vec::new)
-                    .push(app_id.unwrap());
-            }
-            app_id = None;
-        }
+fn parse_tool_name(line: &str, app_id: &AppId, map: &mut CompatToolMapping) {
+    let version = line
+        .split_whitespace()
+        .last()
+        .map_or("", |s| s.trim_matches('"'));
+    if !version.is_empty() {
+        map.entry(version.to_string())
+            .or_insert_with(Vec::new)
+            .push(*app_id);
     }
+}
 
-    map
+pub fn parse_compat_tool_mapping(config_lines: impl Iterator<Item = String>) -> CompatToolMapping {
+    let parsers = HashMap::from([("name", parse_tool_name as KeyParser<CompatToolMapping>)]);
+
+    parse_vdf_keys("CompatToolMapping", config_lines, &parsers)
 }

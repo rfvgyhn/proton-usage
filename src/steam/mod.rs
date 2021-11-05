@@ -9,7 +9,7 @@ use std::collections::HashMap;
 
 type Result<T> = std::result::Result<T, Box<dyn std::error::Error>>;
 
-#[derive(Constructor, Display, FromStr, Hash, Eq, PartialEq, Debug)]
+#[derive(Constructor, Display, FromStr, Hash, Eq, PartialEq, Copy, Clone, Debug)]
 pub struct AppId(u64);
 
 #[derive(Deserialize, Debug)]
@@ -67,4 +67,58 @@ pub async fn fetch_app_names(app_ids: &[&AppId]) -> Result<HashMap<AppId, String
         .collect::<HashMap<AppId, String>>();
 
     Ok(names)
+}
+
+type KeyParser<T> = fn(&str, &AppId, &mut T);
+
+/// Super fragile parsing. May have unexpected results if the vdf is malformed.
+/// ```vdf
+/// ...
+/// "[section]"
+/// {
+///     ...
+///     "[app_id]"
+///     {
+///     "[key_1]"   "[value_1]"
+///     "[key_2]"   "[value_2]"
+///     }
+///     ...
+/// }
+/// ...
+/// ```
+fn parse_vdf_keys<T>(
+    section: &str,
+    config_lines: impl Iterator<Item = String>,
+    key_parsers: &HashMap<&str, KeyParser<T>>,
+) -> T
+where
+    T: Default,
+{
+    let mut lines = config_lines
+        .skip_while(|l| l.trim() != format!("\"{}\"", section))
+        .skip(2);
+    let mut result = T::default();
+    let mut depth = 0;
+    let mut app_id: Option<AppId> = None;
+
+    while let (Some(line), true) = (lines.next(), depth > -1) {
+        let line = line.trim();
+        if line == "{" {
+            depth += 1;
+        } else if line == "}" {
+            depth -= 1;
+            app_id = None;
+        } else if let Ok(id) = line.trim_matches('"').parse() {
+            app_id = Some(id);
+        } else if let Some(app_id) = app_id {
+            key_parsers
+                .into_iter()
+                .filter(|(key, _)| line.starts_with(&format!("\"{}\"", key)))
+                .for_each(|(_, parse)| {
+                    parse(line, &app_id, &mut result);
+                });
+        }
+    }
+
+    result
 }
