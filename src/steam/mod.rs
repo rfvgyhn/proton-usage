@@ -1,6 +1,8 @@
 mod compat_tool;
+mod registry;
 
 pub use self::compat_tool::parse_compat_tool_mapping;
+pub use self::registry::parse_registry;
 use derive_more::{Constructor, Display, FromStr};
 use futures::{stream, StreamExt};
 use reqwest::Client;
@@ -11,6 +13,19 @@ type Result<T> = std::result::Result<T, Box<dyn std::error::Error>>;
 
 #[derive(Constructor, Display, FromStr, Hash, Eq, PartialEq, Copy, Clone, Debug)]
 pub struct AppId(u64);
+
+#[derive(Clone, Copy, Debug, PartialEq)]
+pub enum InstallState {
+    NotInstalled,
+    Installed,
+    Shortcut,
+    Unknown,
+}
+impl Default for InstallState {
+    fn default() -> Self {
+        InstallState::Unknown
+    }
+}
 
 #[derive(Deserialize, Debug)]
 struct AppDetails {
