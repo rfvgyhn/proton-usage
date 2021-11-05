@@ -114,8 +114,14 @@ where
             key_parsers
                 .into_iter()
                 .filter(|(key, _)| line.starts_with(&format!("\"{}\"", key)))
-                .for_each(|(_, parse)| {
-                    parse(line, &app_id, &mut result);
+                .filter_map(|(_, parse)| {
+                    line.split_whitespace()
+                        .last()
+                        .map(|s| (s.trim_matches('"'), parse))
+                        .filter(|(s, _)| !s.is_empty())
+                })
+                .for_each(|(value, parse)| {
+                    parse(&value, &app_id, &mut result);
                 });
         }
     }

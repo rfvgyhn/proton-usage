@@ -17,16 +17,10 @@ impl CompatToolMapping {
     }
 }
 
-fn parse_tool_name(line: &str, app_id: &AppId, map: &mut CompatToolMapping) {
-    let version = line
-        .split_whitespace()
-        .last()
-        .map_or("", |s| s.trim_matches('"'));
-    if !version.is_empty() {
-        map.entry(version.to_string())
-            .or_insert_with(Vec::new)
-            .push(*app_id);
-    }
+fn parse_tool_name(tool_name: &str, app_id: &AppId, map: &mut CompatToolMapping) {
+    map.entry(tool_name.to_string())
+        .or_insert_with(Vec::new)
+        .push(*app_id);
 }
 
 pub fn parse_compat_tool_mapping(config_lines: impl Iterator<Item = String>) -> CompatToolMapping {
