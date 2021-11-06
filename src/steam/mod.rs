@@ -146,3 +146,32 @@ where
 
     result
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    #[test]
+    fn parsing_is_case_insensitive() {
+        let lines = r#"
+            "Section"
+            {
+                "12345"
+                {
+                    "Asdf" "0"
+                }
+            }"#
+        .lines()
+        .map(|s| s.to_string());
+        fn parse(_: &str, _: &AppId, result: &mut u32) {
+            *result = *result + 1;
+        }
+        let parsers = HashMap::from([("aSdF", parse as KeyParser<u32>)]);
+
+        let result = parse_vdf_keys("sEcTiOn", lines, &parsers);
+
+        assert_eq!(
+            result, 1,
+            "Parsing section and keys should be case insensitive"
+        );
+    }
+}
