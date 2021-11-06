@@ -21,17 +21,31 @@ impl Display for CompatToolConfig {
     }
 }
 
-pub async fn parse_steam_config(path: &Path) -> Result<CompatToolConfig> {
-    let lines = open_text_config(path)?;
+pub async fn parse_steam_config(steam_home: &Path) -> Result<CompatToolConfig> {
+    let config_path = steam_home.join("root/config/config.vdf");
+    log::debug!("Parsing {}", config_path.display());
+    let config_lines = open_text_config(config_path)?;
+    let tool_mapping = steam::parse_compat_tool_mapping(config_lines);
+    let unique_apps = tool_mapping.apps();
 
-    log::debug!("Parsing {}", path.display());
-    let tool_mapping = steam::parse_compat_tool_mapping(lines);
+    let registry_path = steam_home.join("registry.vdf");
+    log::debug!("Parsing {}", registry_path.display());
+    let registry_lines = open_text_config(registry_path)?;
+    let registry = steam::parse_registry(registry_lines, &unique_apps);
 
-    let ids = tool_mapping.values().flatten().collect::<Vec<_>>();
-
-    log::info!("Fetching app names");
-    let app_names = steam::fetch_app_names(&ids).await?;
-    log::debug!("Found {} app names", app_names.len());
+    let mut app_names = registry.to_name_map();
+    log::debug!("Found {} names from registry.vdf", app_names.len());
+    if app_names.len() != unique_apps.len() {
+        log::info!("Fetching app names");
+        let ids_with_names = app_names.keys().collect();
+        let ids = unique_apps
+            .difference(&ids_with_names)
+            .cloned()
+            .collect::<Vec<_>>();
+        let api_names = steam::fetch_app_names(&ids).await?;
+        log::debug!("Found {} names from Steam API", api_names.len());
+        app_names.extend(api_names);
+    }
 
     let config = tool_mapping
         .into_iter()
@@ -45,7 +59,7 @@ pub async fn parse_steam_config(path: &Path) -> Result<CompatToolConfig> {
                         .unwrap_or_else(|| format!("Unknown (Id: {})", id))
                 })
                 .collect();
-            (tool.clone(), names)
+            (tool, names)
         })
         .collect();
 

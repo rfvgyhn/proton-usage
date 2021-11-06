@@ -110,7 +110,7 @@ where
     T: Default,
 {
     let mut lines = config_lines
-        .skip_while(|l| l.trim() != format!("\"{}\"", section))
+        .skip_while(|l| !l.trim().eq_ignore_ascii_case(&format!("\"{}\"", section)))
         .skip(2);
     let mut result = T::default();
     let mut depth = 0;
@@ -127,16 +127,19 @@ where
             app_id = Some(id);
         } else if let Some(app_id) = app_id {
             key_parsers
-                .into_iter()
-                .filter(|(key, _)| line.starts_with(&format!("\"{}\"", key)))
+                .iter()
+                .filter(|(key, _)| {
+                    line.to_lowercase()
+                        .starts_with(&format!("\"{}\"", key.to_lowercase()))
+                })
                 .filter_map(|(_, parse)| {
-                    line.split_whitespace()
-                        .last()
-                        .map(|s| (s.trim_matches('"'), parse))
+                    line.split('"')
+                        .nth(3)
+                        .map(|s| (s, parse))
                         .filter(|(s, _)| !s.is_empty())
                 })
                 .for_each(|(value, parse)| {
-                    parse(&value, &app_id, &mut result);
+                    parse(value, &app_id, &mut result);
                 });
         }
     }

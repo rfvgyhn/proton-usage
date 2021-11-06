@@ -1,7 +1,7 @@
 use super::{parse_vdf_keys, AppId, KeyParser};
 use derive_more::{From, Into, IntoIterator};
 use std::collections::hash_map::{Entry, Values};
-use std::collections::HashMap;
+use std::collections::{HashMap, HashSet};
 
 #[derive(IntoIterator, Into, From, Default)]
 pub struct CompatToolMapping(HashMap<String, Vec<AppId>>);
@@ -14,6 +14,9 @@ impl CompatToolMapping {
     }
     pub fn new() -> Self {
         Self(HashMap::new())
+    }
+    pub fn apps(&self) -> HashSet<&AppId> {
+        self.0.values().flatten().collect()
     }
 }
 

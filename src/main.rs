@@ -5,9 +5,9 @@ use std::path::PathBuf;
 #[derive(Parser)]
 #[clap(version, about)]
 struct Opts {
-    /// Path to the config.vdf file
+    /// Path to the Steam home directory. Default: ~/.steam
     #[clap(short, long)]
-    config_path: Option<PathBuf>,
+    steam_path: Option<PathBuf>,
 
     /// Output verbosity (-v, -vv, -vvv, etc)
     #[clap(short, long, parse(from_occurrences))]
@@ -25,12 +25,12 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         .init()
         .unwrap();
 
-    let config_path = opts
-        .config_path
-        .or_else(|| dirs::home_dir().map(|home| home.join(".steam/root/config/config.vdf")))
-        .ok_or("Couldn't find Steam root config")?;
+    let steam_path = opts
+        .steam_path
+        .or_else(|| dirs::home_dir().map(|home| home.join(".steam")))
+        .ok_or("Couldn't find Steam directory")?;
 
-    let config = parse_steam_config(&config_path).await?;
+    let config = parse_steam_config(&steam_path).await?;
     println!("{}", &config);
     Ok(())
 }
