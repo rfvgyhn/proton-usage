@@ -8,9 +8,9 @@ on:
     branches:
       - master
 
-jobs:
-  check:
-    name: Check
+jobs:          
+  test:
+    name: Test
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
@@ -20,12 +20,13 @@ jobs:
         uses: actions-rs/toolchain@v1
         with:
           toolchain: stable
+          profile: minimal
           override: true
 
-      - name: Run cargo check
+      - name: Run cargo test
         uses: actions-rs/cargo@v1
         with:
-          command: check
+          command: test
 
   clippy:
     name: Clippy
