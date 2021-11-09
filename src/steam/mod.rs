@@ -1,3 +1,4 @@
+pub mod app_info;
 mod compat_tool;
 mod registry;
 pub mod shortcuts;

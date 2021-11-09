@@ -48,6 +48,18 @@ pub async fn parse_steam_config(steam_home: &Path) -> Result<CompatToolConfig> {
     }
 
     if app_names.len() != unique_apps.len() {
+        let appinfo_path = steam_home.join("root/appcache/appinfo.vdf");
+        log::debug!("Parsing {}", appinfo_path.display());
+        let missing_names = unique_apps
+            .difference(&HashSet::from_iter(app_names.keys()))
+            .copied()
+            .collect::<Vec<&steam::AppId>>();
+        let names = steam::app_info::parse_names(&appinfo_path, &missing_names)?;
+        log::debug!("Found {} name(s) from appinfo.vdf", names.len());
+        app_names.extend(names);
+    }
+
+    if app_names.len() != unique_apps.len() {
         log::info!("Fetching app names");
         let ids_with_names = app_names.keys().collect();
         let ids = unique_apps
