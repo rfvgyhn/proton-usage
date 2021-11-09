@@ -1,6 +1,6 @@
 mod steam;
 
-use std::collections::BTreeMap;
+use std::collections::{BTreeMap, HashSet};
 use std::fmt::Display;
 use std::io::BufRead;
 use std::path::Path;
@@ -34,7 +34,19 @@ pub async fn parse_steam_config(steam_home: &Path) -> Result<CompatToolConfig> {
     let registry = steam::parse_registry(registry_lines, &unique_apps);
 
     let mut app_names = registry.to_name_map();
-    log::debug!("Found {} names from registry.vdf", app_names.len());
+    log::debug!("Found {} name(s) from registry.vdf", app_names.len());
+
+    if app_names.len() != unique_apps.len() {
+        log::debug!("Parsing shortcuts");
+        let missing_names = unique_apps
+            .difference(&HashSet::from_iter(app_names.keys()))
+            .copied()
+            .collect::<Vec<&steam::AppId>>();
+        let shortcuts = steam::shortcuts::parse_names(&steam_home.join("steam"), &missing_names)?;
+        log::debug!("Found {} name(s) from shortcuts.vdf", shortcuts.len());
+        app_names.extend(shortcuts);
+    }
+
     if app_names.len() != unique_apps.len() {
         log::info!("Fetching app names");
         let ids_with_names = app_names.keys().collect();

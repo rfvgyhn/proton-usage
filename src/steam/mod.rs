@@ -1,5 +1,6 @@
 mod compat_tool;
 mod registry;
+pub mod shortcuts;
 
 pub use self::compat_tool::parse_compat_tool_mapping;
 pub use self::registry::parse_registry;
@@ -45,7 +46,7 @@ fn parse_names_from_bin_vdf(
     file_contents: &[u8],
     possible_keys: &[&str],
     whitelist: &[&AppId],
-) -> Result<HashMap<AppId, String>> {
+) -> HashMap<AppId, String> {
     let mut map = HashMap::new();
     const ID_KEY: &[u8; 6] = b"appid\0";
 
@@ -89,7 +90,7 @@ fn parse_names_from_bin_vdf(
         }
     }
 
-    Ok(map)
+    map
 }
 
 pub async fn fetch_app_names(app_ids: &[&AppId]) -> Result<HashMap<AppId, String>> {
@@ -221,8 +222,7 @@ mod tests {
         let app_id2 = &AppId::new(2566828398);
         let keys = ["appname", "AppName"];
 
-        let result = parse_names_from_bin_vdf(&contents, &keys, &[app_id1, app_id2])
-            .expect("Should have parsed");
+        let result = parse_names_from_bin_vdf(&contents, &keys, &[app_id1, app_id2]);
 
         assert_eq!(result.len(), 2);
         assert_eq!(result.get(app_id1).unwrap(), "The Name1");
