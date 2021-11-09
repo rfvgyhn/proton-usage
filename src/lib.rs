@@ -26,7 +26,8 @@ pub fn parse_steam_config(steam_home: &Path) -> Result<CompatToolConfig> {
     log::debug!("Parsing {}", config_path.display());
     let config_lines = open_text_config(config_path)?;
     let tool_mapping = steam::parse_compat_tool_mapping(config_lines);
-    let unique_apps = tool_mapping.apps();
+    let mut unique_apps = tool_mapping.apps();
+    unique_apps.remove(&steam::AppId::new(0));
 
     let registry_path = steam_home.join("registry.vdf");
     log::debug!("Parsing {}", registry_path.display());
