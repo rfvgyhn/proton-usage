@@ -37,17 +37,6 @@ pub fn parse_steam_config(steam_home: &Path) -> Result<CompatToolConfig> {
     log::debug!("Found {} name(s) from registry.vdf", app_names.len());
 
     if app_names.len() != unique_apps.len() {
-        log::debug!("Parsing shortcuts");
-        let missing_names = unique_apps
-            .difference(&HashSet::from_iter(app_names.keys()))
-            .copied()
-            .collect::<Vec<&steam::AppId>>();
-        let shortcuts = steam::shortcuts::parse_names(&steam_home.join("steam"), &missing_names)?;
-        log::debug!("Found {} name(s) from shortcuts.vdf", shortcuts.len());
-        app_names.extend(shortcuts);
-    }
-
-    if app_names.len() != unique_apps.len() {
         let appinfo_path = steam_home.join("root/appcache/appinfo.vdf");
         log::debug!("Parsing {}", appinfo_path.display());
         let missing_names = unique_apps
@@ -57,6 +46,17 @@ pub fn parse_steam_config(steam_home: &Path) -> Result<CompatToolConfig> {
         let names = steam::app_info::parse_names(&appinfo_path, &missing_names)?;
         log::debug!("Found {} name(s) from appinfo.vdf", names.len());
         app_names.extend(names);
+    }
+
+    if app_names.len() != unique_apps.len() {
+        log::debug!("Parsing shortcuts");
+        let missing_names = unique_apps
+            .difference(&HashSet::from_iter(app_names.keys()))
+            .copied()
+            .collect::<Vec<&steam::AppId>>();
+        let shortcuts = steam::shortcuts::parse_names(&steam_home.join("steam"), &missing_names)?;
+        log::debug!("Found {} name(s) from shortcuts.vdf", shortcuts.len());
+        app_names.extend(shortcuts);
     }
 
     let config = tool_mapping
