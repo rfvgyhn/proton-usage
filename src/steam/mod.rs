@@ -41,6 +41,57 @@ struct AppDetailsData {
 #[derive(Deserialize, Debug)]
 struct AppDetailsResponse(HashMap<u64, AppDetailsData>);
 
+fn parse_names_from_bin_vdf(
+    file_contents: &[u8],
+    possible_keys: &[&str],
+    whitelist: &[&AppId],
+) -> Result<HashMap<AppId, String>> {
+    let mut map = HashMap::new();
+    const ID_KEY: &[u8; 6] = b"appid\0";
+
+    for app_id in whitelist.iter() {
+        let id = ID_KEY
+            .iter()
+            .chain(&(app_id.0 as u32).to_le_bytes())
+            .copied()
+            .collect::<Vec<u8>>();
+
+        let name = &file_contents
+            .windows(id.len())
+            .position(|window| window == id)
+            .map(|i| {
+                let start = i + id.len() + 1; // index + "appname\0appid"
+                let current = &file_contents[start..];
+
+                possible_keys
+                    .iter()
+                    .map(|&key| (key.to_owned() + "\0").as_bytes().to_owned())
+                    .collect::<Vec<_>>()
+                    .iter()
+                    .filter_map(|key| {
+                        current
+                            .windows(key.len())
+                            .position(|window| window == key)
+                            .map(|i| {
+                                let start = i + key.len(); // index + "value\0"
+                                let current = &current[start..];
+                                let end = current.iter().position(|&b| b == 0).unwrap();
+                                let name = &current[..end];
+                                String::from_utf8_lossy(name).into_owned()
+                            })
+                    })
+                    .next()
+            })
+            .flatten();
+
+        if let Some(name) = name {
+            map.insert(*app_id.to_owned(), name.to_owned());
+        }
+    }
+
+    Ok(map)
+}
+
 pub async fn fetch_app_names(app_ids: &[&AppId]) -> Result<HashMap<AppId, String>> {
     let urls = app_ids
         .iter()
@@ -150,8 +201,36 @@ where
 #[cfg(test)]
 mod tests {
     use super::*;
+
     #[test]
-    fn parsing_is_case_insensitive() {
+    fn bin_vdf_uses_first_potential_key() {
+        let contents = [
+            0x00u8, 0x73, 0x68, 0x6F, 0x72, 0x74, 0x63, 0x75, 0x74, 0x73, 0x00, 0x00, 0x30, 0x00,
+            0x02, 0x61, 0x70, 0x70, 0x69, 0x64, 0x00, // appid\0
+            0x6E, 0xB1, 0xFE, 0x99, 0x01, // 2583605614 (little endian u32)
+            0x61, 0x70, 0x70, 0x6E, 0x61, 0x6D, 0x65, 0x00, // appname\0
+            0x54, 0x68, 0x65, 0x20, 0x4e, 0x61, 0x6d, 0x65, 0x31, 0x00, // The Name1\0
+            0x01, 0x65, 0x78, 0x65, 0x00, // .exe\0
+            0x02, 0x61, 0x70, 0x70, 0x69, 0x64, 0x00, // appid\0
+            0x6E, 0xB1, 0xFE, 0x98, 0x01, // 2566828398 (little endian u32)
+            0x41, 0x70, 0x70, 0x4E, 0x61, 0x6D, 0x65, 0x00, // AppName\0
+            0x54, 0x68, 0x65, 0x20, 0x4e, 0x61, 0x6d, 0x65, 0x32, 0x00, // The Name2\0
+            0x01, 0x65, 0x78, 0x65, 0x00, // .exe\0
+        ];
+        let app_id1 = &AppId::new(2583605614);
+        let app_id2 = &AppId::new(2566828398);
+        let keys = ["appname", "AppName"];
+
+        let result = parse_names_from_bin_vdf(&contents, &keys, &[app_id1, app_id2])
+            .expect("Should have parsed");
+
+        assert_eq!(result.len(), 2);
+        assert_eq!(result.get(app_id1).unwrap(), "The Name1");
+        assert_eq!(result.get(app_id2).unwrap(), "The Name2");
+    }
+
+    #[test]
+    fn text_vdf_parsing_is_case_insensitive() {
         let lines = r#"
             "Section"
             {
