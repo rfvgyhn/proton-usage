@@ -21,7 +21,7 @@ impl Display for CompatToolConfig {
     }
 }
 
-pub async fn parse_steam_config(steam_home: &Path) -> Result<CompatToolConfig> {
+pub fn parse_steam_config(steam_home: &Path) -> Result<CompatToolConfig> {
     let config_path = steam_home.join("root/config/config.vdf");
     log::debug!("Parsing {}", config_path.display());
     let config_lines = open_text_config(config_path)?;
@@ -57,18 +57,6 @@ pub async fn parse_steam_config(steam_home: &Path) -> Result<CompatToolConfig> {
         let names = steam::app_info::parse_names(&appinfo_path, &missing_names)?;
         log::debug!("Found {} name(s) from appinfo.vdf", names.len());
         app_names.extend(names);
-    }
-
-    if app_names.len() != unique_apps.len() {
-        log::info!("Fetching app names");
-        let ids_with_names = app_names.keys().collect();
-        let ids = unique_apps
-            .difference(&ids_with_names)
-            .cloned()
-            .collect::<Vec<_>>();
-        let api_names = steam::fetch_app_names(&ids).await?;
-        log::debug!("Found {} names from Steam API", api_names.len());
-        app_names.extend(api_names);
     }
 
     let config = tool_mapping

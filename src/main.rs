@@ -14,8 +14,7 @@ struct Opts {
     verbose: usize,
 }
 
-#[tokio::main]
-async fn main() -> Result<(), Box<dyn std::error::Error>> {
+fn main() -> Result<(), Box<dyn std::error::Error>> {
     let opts: Opts = Opts::parse();
 
     stderrlog::new()
@@ -30,7 +29,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         .or_else(|| dirs::home_dir().map(|home| home.join(".steam")))
         .ok_or("Couldn't find Steam directory")?;
 
-    let config = parse_steam_config(&steam_path).await?;
+    let config = parse_steam_config(&steam_path)?;
     println!("{}", &config);
     Ok(())
 }
