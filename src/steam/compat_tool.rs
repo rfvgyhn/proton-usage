@@ -20,14 +20,33 @@ impl CompatToolMapping {
     }
 }
 
+const DEFAULT_PROTON_APP_ID: AppId = AppId(0);
 fn parse_tool_name(tool_name: &str, app_id: &AppId, map: &mut CompatToolMapping) {
-    map.entry(tool_name.to_string())
-        .or_insert_with(Vec::new)
-        .push(*app_id);
+    if app_id != &DEFAULT_PROTON_APP_ID {
+        map.entry(tool_name.to_string())
+            .or_insert_with(Vec::new)
+            .push(*app_id);
+    }
 }
 
 pub fn parse_compat_tool_mapping(config_lines: impl Iterator<Item = String>) -> CompatToolMapping {
     let parsers = HashMap::from([("name", parse_tool_name as KeyParser<CompatToolMapping>)]);
 
     parse_vdf_keys("CompatToolMapping", config_lines, &parsers, None)
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn parse_tool_name_excludes_app_zero() {
+        let mut map = CompatToolMapping::new();
+
+        parse_tool_name("name1", &AppId(0), &mut map);
+        parse_tool_name("name2", &AppId(1), &mut map);
+
+        assert_eq!(map.0.len(), 1);
+        assert!(map.0.contains_key("name2"));
+    }
 }
