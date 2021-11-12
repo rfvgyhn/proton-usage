@@ -1,30 +1,16 @@
 pub mod app_info;
 mod compat_tool;
-mod registry;
+pub mod registry;
 pub mod shortcuts;
 
 pub use self::compat_tool::parse_compat_tool_mapping;
-pub use self::registry::parse_registry;
 use derive_more::{Constructor, Display, FromStr};
-use std::collections::HashMap;
+use std::collections::{HashMap, HashSet};
 
 type Result<T> = std::result::Result<T, Box<dyn std::error::Error>>;
 
 #[derive(Constructor, Display, FromStr, Hash, Eq, PartialEq, Copy, Clone, Debug)]
 pub struct AppId(u64);
-
-#[derive(Clone, Copy, Debug, PartialEq)]
-pub enum InstallState {
-    NotInstalled,
-    Installed,
-    Shortcut,
-    Unknown,
-}
-impl Default for InstallState {
-    fn default() -> Self {
-        InstallState::Unknown
-    }
-}
 
 fn parse_names_from_bin_vdf(
     file_contents: &[u8],
@@ -98,6 +84,7 @@ fn parse_vdf_keys<T>(
     section: &str,
     config_lines: impl Iterator<Item = String>,
     key_parsers: &HashMap<&str, KeyParser<T>>,
+    whitelist: Option<&HashSet<&AppId>>,
 ) -> T
 where
     T: Default,
@@ -117,7 +104,13 @@ where
             depth -= 1;
             app_id = None;
         } else if let Ok(id) = line.trim_matches('"').parse() {
-            app_id = Some(id);
+            if let Some(whitelist) = whitelist {
+                if whitelist.contains(&id) {
+                    app_id = Some(id);
+                }
+            } else {
+                app_id = Some(id);
+            }
         } else if let Some(app_id) = app_id {
             key_parsers
                 .iter()
@@ -187,7 +180,7 @@ mod tests {
         }
         let parsers = HashMap::from([("aSdF", parse as KeyParser<u32>)]);
 
-        let result = parse_vdf_keys("sEcTiOn", lines, &parsers);
+        let result = parse_vdf_keys("sEcTiOn", lines, &parsers, None);
 
         assert_eq!(
             result, 1,

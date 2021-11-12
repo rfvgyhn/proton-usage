@@ -29,5 +29,5 @@ fn parse_tool_name(tool_name: &str, app_id: &AppId, map: &mut CompatToolMapping)
 pub fn parse_compat_tool_mapping(config_lines: impl Iterator<Item = String>) -> CompatToolMapping {
     let parsers = HashMap::from([("name", parse_tool_name as KeyParser<CompatToolMapping>)]);
 
-    parse_vdf_keys("CompatToolMapping", config_lines, &parsers)
+    parse_vdf_keys("CompatToolMapping", config_lines, &parsers, None)
 }

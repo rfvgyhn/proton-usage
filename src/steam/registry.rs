@@ -1,70 +1,38 @@
-use super::{parse_vdf_keys, AppId, InstallState, KeyParser};
-use derive_more::{From, Into, IntoIterator};
-use std::collections::hash_map::{Entry, Iter};
+use super::{parse_vdf_keys, AppId, KeyParser};
 use std::collections::{HashMap, HashSet};
 
-#[derive(Default, Clone, Debug)]
-pub struct RegistryEntry {
-    pub name: Option<String>,
-    pub install_state: InstallState,
+#[derive(Default, Debug)]
+pub struct Registry {
+    pub app_names: HashMap<AppId, String>,
+    installed_apps: HashSet<AppId>,
+    uninstalled_apps: HashSet<AppId>,
 }
-
-#[derive(IntoIterator, Into, From, Default, Debug)]
-pub struct Registry(HashMap<AppId, RegistryEntry>);
 impl Registry {
-    pub fn entry(&mut self, key: AppId) -> Entry<'_, AppId, RegistryEntry> {
-        self.0.entry(key)
-    }
-    pub fn new() -> Self {
-        Self(HashMap::new())
-    }
-    pub fn to_name_map(&self) -> HashMap<AppId, String> {
-        self.0
-            .iter()
-            .filter_map(|(id, e)| e.name.clone().map(|n| (*id, n)))
-            .collect()
-    }
-    pub fn iter(&self) -> Iter<'_, AppId, RegistryEntry> {
-        self.0.iter()
-    }
-    pub fn len(&self) -> usize {
-        self.0.len()
+    pub fn app_is_installed(&self, app_id: &AppId) -> bool {
+        self.installed_apps.contains(app_id)
     }
 }
 
-fn parse_installed(value: &str, app_id: &AppId, map: &mut Registry) {
-    let state = match value {
-        "0" => InstallState::NotInstalled,
-        "1" => InstallState::Installed,
-        _ => InstallState::Unknown,
-    };
-
-    map.entry(*app_id)
-        .or_insert_with(RegistryEntry::default)
-        .install_state = state;
+fn parse_installed(value: &str, app_id: &AppId, registry: &mut Registry) {
+    if value == "1" {
+        registry.installed_apps.insert(*app_id);
+    }
 }
 
-fn parse_name(name: &str, app_id: &AppId, map: &mut Registry) {
-    map.entry(*app_id)
-        .or_insert_with(RegistryEntry::default)
-        .name = Some(name.to_string());
+fn parse_name(name: &str, app_id: &AppId, registry: &mut Registry) {
+    registry.app_names.insert(*app_id, name.to_string());
 }
 
 pub fn parse_registry(
     config_lines: impl Iterator<Item = String>,
-    ids: &HashSet<&AppId>,
+    whitelist: &HashSet<&AppId>,
 ) -> Registry {
     let parsers = HashMap::from([
         ("installed", parse_installed as KeyParser<Registry>),
         ("name", parse_name as KeyParser<Registry>),
     ]);
 
-    let registry = parse_vdf_keys("apps", config_lines, &parsers)
-        .0
-        .into_iter()
-        .filter(|(id, _)| ids.contains(id))
-        .collect();
-    Registry(registry)
+    parse_vdf_keys("apps", config_lines, &parsers, Some(whitelist))
 }
 
 #[cfg(test)]
@@ -88,13 +56,11 @@ mod tests {
         .map(|s| s.to_string());
 
         let registry = super::parse_registry(lines, &filter);
-        let entry = registry.0.get(&app_id);
+        let installed_entry = registry.installed_apps.get(&app_id);
+        let uninstalled_entry = registry.uninstalled_apps.get(&app_id);
 
-        assert_eq!(entry.is_some(), true, "Entry should be Some");
-        assert_eq!(
-            entry.unwrap().install_state,
-            super::InstallState::NotInstalled
-        );
+        assert!(installed_entry.is_none());
+        assert!(uninstalled_entry.is_some());
     }
 
     #[test]
@@ -115,10 +81,11 @@ mod tests {
         .map(|s| s.to_string());
 
         let registry = super::parse_registry(lines, &filter);
-        let entry = registry.0.get(&app_id);
+        let installed_entry = registry.installed_apps.get(&app_id);
+        let uninstalled_entry = registry.uninstalled_apps.get(&app_id);
 
-        assert_eq!(entry.is_some(), true, "Entry should be Some");
-        assert_eq!(entry.unwrap().install_state, super::InstallState::Installed);
+        assert!(installed_entry.is_some());
+        assert!(uninstalled_entry.is_none());
     }
 
     #[test]
@@ -140,10 +107,10 @@ mod tests {
         .map(|s| s.to_string());
 
         let registry = super::parse_registry(lines, &filter);
-        let entry = registry.0.get(&app_id);
+        let entry = registry.app_names.get(&app_id);
 
-        assert_eq!(entry.is_some(), true, "Entry should be Some");
-        assert_eq!(entry.unwrap().name, Some("asdf".to_string()));
+        assert!(entry.is_some());
+        assert_eq!(entry.unwrap(), "asdf");
     }
 
     #[test]
@@ -164,9 +131,8 @@ mod tests {
         .map(|s| s.to_string());
 
         let registry = super::parse_registry(lines, &filter);
-        let entry = registry.0.get(&app_id);
+        let entry = registry.app_names.get(&app_id);
 
-        assert_eq!(entry.is_some(), true, "Entry should be Some");
-        assert_eq!(entry.unwrap().name, None);
+        assert!(entry.is_none());
     }
 }
