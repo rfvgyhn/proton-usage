@@ -2,6 +2,9 @@
 
 ## [Unreleased]
 
+### New Features
+- Show apps' installation state
+
 ### Enhancements
 - Parse names from registry, appinfo and shortcuts VDF files. No longer needs to make
   any Steam API requests.
