@@ -26,7 +26,6 @@ impl Display for CompatToolConfig {
     }
 }
 
-#[derive(Clone)]
 pub struct App {
     pub name: String,
     pub install_state: InstallState,
@@ -38,12 +37,6 @@ pub enum InstallState {
     Installed,
     Shortcut,
     Unknown,
-}
-
-impl Default for InstallState {
-    fn default() -> Self {
-        InstallState::Unknown
-    }
 }
 
 impl Display for InstallState {
@@ -71,7 +64,7 @@ pub fn parse_steam_config(steam_home: &Path) -> Result<CompatToolConfig> {
     let registry = steam::registry::parse_registry(registry_lines, &unique_apps);
     let mut shortcuts = HashMap::new();
 
-    let mut app_names = registry.app_names.clone(); //to_name_map();
+    let mut app_names = registry.app_names.clone();
     log::debug!("Found {} name(s) from registry.vdf", app_names.len());
 
     if app_names.len() != unique_apps.len() {

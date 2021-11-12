@@ -5,7 +5,6 @@ use std::collections::{HashMap, HashSet};
 pub struct Registry {
     pub app_names: HashMap<AppId, String>,
     installed_apps: HashSet<AppId>,
-    uninstalled_apps: HashSet<AppId>,
 }
 impl Registry {
     pub fn app_is_installed(&self, app_id: &AppId) -> bool {
@@ -57,10 +56,8 @@ mod tests {
 
         let registry = super::parse_registry(lines, &filter);
         let installed_entry = registry.installed_apps.get(&app_id);
-        let uninstalled_entry = registry.uninstalled_apps.get(&app_id);
 
         assert!(installed_entry.is_none());
-        assert!(uninstalled_entry.is_some());
     }
 
     #[test]
@@ -82,10 +79,8 @@ mod tests {
 
         let registry = super::parse_registry(lines, &filter);
         let installed_entry = registry.installed_apps.get(&app_id);
-        let uninstalled_entry = registry.uninstalled_apps.get(&app_id);
 
         assert!(installed_entry.is_some());
-        assert!(uninstalled_entry.is_none());
     }
 
     #[test]
