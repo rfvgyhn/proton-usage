@@ -25,10 +25,10 @@ USAGE:
     proton-usage [OPTIONS]
 
 OPTIONS:
-    -c, --config-path <CONFIG_PATH>    Path to the config.vdf file. Default: ~/.steam/root/config/config.vdf
-    -h, --help                         Print help information
-    -v, --verbose                      Output verbosity (-v, -vv, -vvv, etc)
-    -V, --version                      Print version information
+    -h, --help                       Print help information
+    -s, --steam-path <STEAM_PATH>    Path to the Steam home directory. Default: ~/.steam
+    -v, --verbose                    Output verbosity (-v, -vv, -vvv, etc)
+    -V, --version                    Print version information
 ```
 
 ## Build
