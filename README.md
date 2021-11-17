@@ -41,7 +41,7 @@ OPTIONS:
     $ cd proton-usage
     $ cargo build --release
     $ ./target/release/proton-usage --version
-    proton-usage 0.1.0
+    proton-usage 0.2.0
     ```
 
 ## Preview
