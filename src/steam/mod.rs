@@ -30,7 +30,7 @@ fn parse_names_from_bin_vdf(
         let name = &file_contents
             .windows(id.len())
             .position(|window| window == id)
-            .map(|i| {
+            .and_then(|i| {
                 let start = i + id.len() + 1; // index + "appname\0appid"
                 let current = &file_contents[start..];
 
@@ -52,8 +52,7 @@ fn parse_names_from_bin_vdf(
                             })
                     })
                     .next()
-            })
-            .flatten();
+            });
 
         if let Some(name) = name {
             map.insert(*app_id.to_owned(), name.to_owned());
