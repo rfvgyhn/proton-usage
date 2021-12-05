@@ -98,7 +98,10 @@ pub fn parse_steam_config(steam_home: &Path) -> Result<CompatToolConfig> {
                 .map(|id| {
                     let name = match &app_names.get(id) {
                         Some(n) => n.to_string(),
-                        None => format!("Unknown (Id: {})", id),
+                        None => {
+                            log::info!("{} is possibly a deleted shortcut", id);
+                            format!("Unknown (Id: {})", id)
+                        }
                     };
                     let install_state = install_state(id, &registry, &shortcuts);
                     App {
