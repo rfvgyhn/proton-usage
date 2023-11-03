@@ -114,7 +114,7 @@ pub fn parse_launch_options(steam_home: &Path) -> Result<LaunchOptionsConfig> {
 
     let mut result = BTreeMap::new();
     for (id, options) in launch_options {
-        let o = options
+        let mut o: Vec<LaunchOptions> = options
             .iter()
             .map(|l| {
                 let app = to_app(&l.app_id, &app_names, &registry, &shortcuts);
@@ -125,6 +125,7 @@ pub fn parse_launch_options(steam_home: &Path) -> Result<LaunchOptionsConfig> {
                 }
             })
             .collect();
+        o.sort_by(|a, b| a.app.name.cmp(&b.app.name));
         let username = steam::get_display_name(&steam_home, &id)?;
         result.insert(username, o);
     }
@@ -145,10 +146,11 @@ pub fn parse_tool_mapping(steam_home: &Path) -> Result<CompatToolConfig> {
     let config = tool_mapping
         .into_iter()
         .map(|(tool, ids)| {
-            let names = ids
+            let mut names: Vec<App> = ids
                 .iter()
                 .map(|id| to_app(id, &app_names, &registry, &shortcuts))
                 .collect();
+            names.sort_by(|a, b| a.name.cmp(&b.name));
             (tool, names)
         })
         .collect();
