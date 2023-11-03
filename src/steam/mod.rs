@@ -1,16 +1,81 @@
 pub mod app_info;
 mod compat_tool;
+mod local_config;
+mod login_users;
 pub mod registry;
 pub mod shortcuts;
 
 pub use self::compat_tool::parse_compat_tool_mapping;
+pub use self::local_config::parse_launch_options_mapping;
+pub use self::login_users::get_display_name;
 use derive_more::{Constructor, Display, FromStr};
 use std::collections::{HashMap, HashSet};
+use std::path::{Path, PathBuf};
 
 type Result<T> = std::result::Result<T, Box<dyn std::error::Error>>;
 
 #[derive(Constructor, Display, FromStr, Hash, Eq, PartialEq, Copy, Clone, Debug)]
 pub struct AppId(u64);
+#[derive(Display, Hash, Eq, PartialEq, Ord, PartialOrd)]
+pub struct UserId(u32);
+
+#[derive(Display, Eq, PartialEq, Ord, PartialOrd)]
+pub struct SteamId64(u64);
+
+impl From<UserId> for SteamId64 {
+    fn from(id: UserId) -> Self {
+        // https://developer.valvesoftware.com/wiki/SteamID
+        let id = id.0 as u64;
+        let (y, z): (u64, u64) = if id % 2 == 0 {
+            (0, id / 2)
+        } else {
+            (1, (id - 1) / 2)
+        };
+        let account_type: u64 = 0x0110000100000000; // assume an individual account
+        SteamId64(z * 2 + account_type + y)
+    }
+}
+
+struct UserDataFile {
+    pub path: PathBuf,
+    pub user_id: UserId,
+}
+const DEFAULT_PROTON_APP_ID: AppId = AppId(0);
+fn get_userdata_file(steam_home: &Path, relative_file_path: &str) -> Result<Vec<UserDataFile>> {
+    let userdata_path = steam_home.join("root/userdata");
+    let result: Vec<UserDataFile> = std::fs::read_dir(&userdata_path)
+        .map_err(|e| {
+            format!(
+                "Couldn't read directory at '{}': {}",
+                userdata_path.to_string_lossy(),
+                e
+            )
+        })?
+        .filter_map(|entry| entry.ok())
+        .filter_map(|entry| entry.path().is_dir().then(|| entry.path()))
+        .filter_map(|dir| {
+            dir.components()
+                .last()
+                .map(|component| component.as_os_str().to_str().unwrap_or(""))
+                .map(|str| str.parse::<u32>().unwrap_or(0))
+                .filter(|user_id| *user_id != 0)
+                .map(|id| (dir, id))
+        })
+        .filter_map(|(dir, id)| {
+            let path = dir.join(relative_file_path);
+            if path.exists() {
+                Some(UserDataFile {
+                    path,
+                    user_id: UserId(id),
+                })
+            } else {
+                None
+            }
+        })
+        .collect();
+
+    Ok(result)
+}
 
 fn parse_names_from_bin_vdf(
     file_contents: &[u8],
@@ -37,8 +102,6 @@ fn parse_names_from_bin_vdf(
                 possible_keys
                     .iter()
                     .map(|&key| (key.to_owned() + "\0").as_bytes().to_owned())
-                    .collect::<Vec<_>>()
-                    .iter()
                     .filter_map(|key| {
                         current
                             .windows(key.len())
@@ -118,9 +181,9 @@ where
                         .starts_with(&format!("\"{}\"", key.to_lowercase()))
                 })
                 .filter_map(|(_, parse)| {
-                    line.split('"')
-                        .nth(3)
-                        .map(|s| (s, parse))
+                    line.splitn(4, '"')
+                        .last()
+                        .map(|s| (&s[..s.len() - 1], parse))
                         .filter(|(s, _)| !s.is_empty())
                 })
                 .for_each(|(value, parse)| {
@@ -185,5 +248,37 @@ mod tests {
             result, 1,
             "Parsing section and keys should be case insensitive"
         );
+    }
+
+    #[test]
+    fn text_vdf_parsing_includes_escaped_chars() {
+        let lines = r#"
+            "Section"
+            {
+                "12345"
+                {
+                    "Asdf" "\"0\""
+                }
+            }"#
+        .lines()
+        .map(|s| s.to_string());
+        fn parse(str: &str, _: &AppId, result: &mut String) {
+            *result = str.to_string();
+        }
+        let parsers = HashMap::from([("Asdf", parse as KeyParser<String>)]);
+
+        let result = parse_vdf_keys("Section", lines, &parsers, None);
+
+        assert_eq!(
+            result, "\\\"0\\\"",
+            "Parsing value should include escaped chars"
+        );
+    }
+
+    #[test]
+    fn can_convert_account_id_to_community_id() {
+        let id64: SteamId64 = UserId(1880504).into();
+
+        assert_eq!(id64.0, 76561197962146232, "")
     }
 }

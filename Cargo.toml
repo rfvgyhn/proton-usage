@@ -19,6 +19,6 @@ lto = true
 [dependencies]
 derive_more = "0.99"
 dirs = "4.0"
-clap = "3.0.0-beta.5"
+clap = { version = "4.4.7", features = ["derive"] }
 log = "0.4"
 stderrlog = "0.5"

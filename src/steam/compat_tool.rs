@@ -1,4 +1,4 @@
-use super::{parse_vdf_keys, AppId, KeyParser};
+use super::{parse_vdf_keys, AppId, KeyParser, DEFAULT_PROTON_APP_ID};
 use derive_more::{From, Into, IntoIterator};
 use std::collections::hash_map::{Entry, Values};
 use std::collections::{HashMap, HashSet};
@@ -20,7 +20,6 @@ impl CompatToolMapping {
     }
 }
 
-const DEFAULT_PROTON_APP_ID: AppId = AppId(0);
 fn parse_tool_name(tool_name: &str, app_id: &AppId, map: &mut CompatToolMapping) {
     if app_id != &DEFAULT_PROTON_APP_ID {
         map.entry(tool_name.to_string())
