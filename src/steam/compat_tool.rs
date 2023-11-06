@@ -22,9 +22,7 @@ impl CompatToolMapping {
 
 fn parse_tool_name(tool_name: &str, app_id: &AppId, map: &mut CompatToolMapping) {
     if app_id != &DEFAULT_PROTON_APP_ID {
-        map.entry(tool_name.to_string())
-            .or_insert_with(Vec::new)
-            .push(*app_id);
+        map.entry(tool_name.to_string()).or_default().push(*app_id);
     }
 }
 
