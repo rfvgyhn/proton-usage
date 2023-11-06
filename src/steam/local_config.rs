@@ -14,7 +14,7 @@ pub struct LaunchOptions {
 fn parse_launch_options(options: &str, app_id: &AppId, map: &mut Vec<LaunchOptions>) {
     if app_id != &DEFAULT_PROTON_APP_ID {
         map.push(LaunchOptions {
-            app_id: app_id.clone(),
+            app_id: *app_id,
             options: options.to_string(),
         });
     }

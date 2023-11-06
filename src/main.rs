@@ -1,4 +1,4 @@
-use clap::{Parser, Subcommand, ArgAction};
+use clap::{ArgAction, Parser, Subcommand};
 use proton_usage::{parse_launch_options, parse_tool_mapping};
 use std::path::PathBuf;
 
@@ -23,7 +23,7 @@ enum Command {
     Proton,
 
     /// Lists apps with overridden launch options
-    LaunchOptions
+    LaunchOptions,
 }
 
 fn main() -> Result<(), Box<dyn std::error::Error>> {
@@ -49,7 +49,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         Some(Command::LaunchOptions) => {
             let config = parse_launch_options(&steam_path)?;
             println!("{}", &config);
-        },
+        }
     };
 
     Ok(())

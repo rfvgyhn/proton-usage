@@ -13,7 +13,7 @@ const INDENT_WIDTH: usize = 4;
 
 pub struct CompatToolConfig(BTreeMap<String, Vec<App>>);
 impl Display for CompatToolConfig {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+    fn fmt(&self, f: &mut Formatter) -> fmt::Result {
         for (i, (compat_tool, apps)) in self.0.iter().enumerate() {
             writeln!(f, "{}", compat_tool)?;
 
@@ -23,7 +23,7 @@ impl Display for CompatToolConfig {
             }
 
             if i < self.0.len() - 1 {
-                writeln!(f, "")?;
+                writeln!(f)?;
             }
         }
 
@@ -75,7 +75,7 @@ impl Display for LaunchOptionsConfig {
                 )?;
 
                 if i < apps.len() - 1 {
-                    writeln!(f, "")?;
+                    writeln!(f)?;
                 }
             }
         }
@@ -121,12 +121,12 @@ pub fn parse_launch_options(steam_home: &Path) -> Result<LaunchOptionsConfig> {
 
                 LaunchOptions {
                     app,
-                    value: (&l.options).to_string(),
+                    value: l.options.to_string(),
                 }
             })
             .collect();
         o.sort_by(|a, b| a.app.name.cmp(&b.app.name));
-        let username = steam::get_display_name(&steam_home, &id)?;
+        let username = steam::get_display_name(steam_home, &id)?;
         result.insert(username, o);
     }
     Ok(LaunchOptionsConfig(result))
@@ -207,7 +207,7 @@ fn get_app_names(
             .difference(&HashSet::from_iter(app_names.keys()))
             .copied()
             .collect::<Vec<&AppId>>();
-        shortcuts = steam::shortcuts::parse_names(&steam_home, &missing_names)?;
+        shortcuts = steam::shortcuts::parse_names(steam_home, &missing_names)?;
         log::debug!("Found {} name(s) from shortcuts.vdf", shortcuts.len());
         app_names.extend(shortcuts.clone());
     }
@@ -242,7 +242,7 @@ where
     let file = fs::File::open(path)?;
     let lines = std::io::BufReader::new(file)
         .lines()
-        .filter_map(std::result::Result::ok);
+        .map_while(std::result::Result::ok);
 
     Ok(lines)
 }

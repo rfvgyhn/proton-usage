@@ -5,9 +5,8 @@ use std::path::Path;
 fn parse_display_name(id: &SteamId64, config_lines: impl Iterator<Item = String>) -> String {
     config_lines
         .skip_while(|line| line.trim_start() != format!("\"{}\"", id))
-        .skip_while(|line| !line.trim_start().starts_with("\"PersonaName"))
-        .next()
-        .and_then(|line| line.rsplit_terminator("\"").next().map(|s| s.to_string()))
+        .find(|line| line.trim_start().starts_with("\"PersonaName"))
+        .and_then(|line| line.rsplit_terminator('"').next().map(|s| s.to_string()))
         .unwrap_or_else(|| id.to_string())
 }
 
@@ -30,10 +29,21 @@ mod tests {
         let lines = r#"
             "users"
             {
+                "123"
+                {
+                    "AccountName"		"Account Name1"
+                    "PersonaName"		"Display Name1"
+                    "RememberPassword"		"1"
+                    "WantsOfflineMode"		"0"
+                    "SkipOfflineModeWarning"		"0"
+                    "AllowAutoLogin"		"1"
+                    "mostrecent"		"1"
+                    "Timestamp"		"123456789"
+                }
                 "12345678901234567"
                 {
-                    "AccountName"		"Account Name"
-                    "PersonaName"		"Display Name"
+                    "AccountName"		"Account Name1"
+                    "PersonaName"		"Display Name1"
                     "RememberPassword"		"1"
                     "WantsOfflineMode"		"0"
                     "SkipOfflineModeWarning"		"0"
@@ -48,7 +58,7 @@ mod tests {
 
         let display_name = parse_display_name(&ID, lines);
 
-        assert_eq!(display_name, "Display Name", "")
+        assert_eq!(display_name, "Display Name1", "")
     }
 
     #[test]
